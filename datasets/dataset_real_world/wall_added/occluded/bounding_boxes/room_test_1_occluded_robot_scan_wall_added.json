@@ -1,0 +1,12 @@
+{
+  "scene_id": "room_test_1_occluded_robot_scan_wall_added",
+  "objects": [
+    {
+      "label": "wall",
+      "shape": "rectangular",
+      "center": [206.65, 69.177, 4],
+      "dimensions": [8.75, 0.45, 8],
+      "rotation": 0
+    }
+  ]
+}
