@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import f1_score, precision_recall_curve, roc_curve, auc
 from matplotlib.colors import Normalize
 from matplotlib.cm import ScalarMappable
-from bounding_box_helpers_V4_multi_V6 import (
+from bounding_box_helpers import (
     fit_pillar_bounding_box,
     is_valid_pillar_bbox,
     fit_wall_bounding_box,
@@ -15,7 +15,7 @@ from bounding_box_helpers_V4_multi_V6 import (
     compute_bbox_iou,
     merge_wall_boxes
 )
-from train_pillar_added_master import MismatchDetectionNet
+from train_master import MismatchDetectionNet
 import open3d as o3d
 import warnings
 from sklearn.exceptions import UndefinedMetricWarning
