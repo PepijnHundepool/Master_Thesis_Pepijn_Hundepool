@@ -42,3 +42,20 @@
  13. Run convert_csv_to_npy_labels_[scenario type].py to get npy files instead of csv. The files are stored inside the npy_files_filtered folder and the labels_npy_filtered folder. 
  14. Check files with view_labels_npy_filtered_[scenario type].py.
  15. Train a model with train_[scenario type].py. 
+
+ # Manual for Optimal Workflow
+ The order of source code files for the entire pipeline is:
+ 1. pointcloud_coloring.py
+ 2. object_filtering.py
+ 3. pointlcoud_folder_noise_preprocessing_csv.py
+ 4. generate_labels_csv_multi_type.py
+ 5. view_labels_csv_multi_type.py
+ 6. label_filtering_csv_multi_type.py
+ 7. (in the case of both an mismatched pillar and wall in the same can) label_filtering_csv_multi_type_walls.py
+ 8. label_addition.py
+ 9. convert_csv_to_npy_labels_multi_type.py
+ 10. view_labels_npy_filtered_multi_type.py
+ 11. train_master.py
+ 12. plot_training.py
+ 13. config.py
+ 14. test_master.py, which uses bounding_box_helpers.py and MD_performance_helpers.py as helper scripts. 
