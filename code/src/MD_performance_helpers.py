@@ -31,17 +31,15 @@ def compute_md_metrics(predictions, labels, verbose=True):
 
     # FPR at 80% recall
     target_recall = 0.80
-    threshold_at_80 = None
+    threshold_at_95 = None
 
     for idx in reversed(range(1, len(recall))):
         if recall[idx] >= target_recall:
-            # threshold_at_80 = thresholds_pr[min(idx, len(thresholds_pr) - 1)]
-            # threshold_at_80 = thresholds_pr[min(idx - 1, len(thresholds_pr) - 1)]
-            threshold_at_80 = thresholds_pr[idx - 1]  # highest threshold for recall ≥ 80%
+            threshold_at_95 = thresholds_pr[idx - 1]  # highest threshold for recall ≥ 95%
             break
 
-    if threshold_at_80 is not None:
-        preds = (predictions > threshold_at_80).astype(np.uint8)
+    if threshold_at_95 is not None:
+        preds = (predictions > threshold_at_95).astype(np.uint8)
 
         TP = np.sum((preds == 1) & (labels == 1))
         FP = np.sum((preds == 1) & (labels == 0))
@@ -59,7 +57,7 @@ def compute_md_metrics(predictions, labels, verbose=True):
         print(f"[METRICS] FPR @ 95% Recall: {fpr_at_95:.4f}")
         print(f"[METRICS] Precision @ 95% Recall: {precision_at_95:.4f}")
         print(f"[METRICS] IoU @ 95% Recall: {iou_95:.4f}")
-        print(f"[METRICS] Computed Threshold @ 80% Recall: {threshold_at_80:.4f}")
+        print(f"[METRICS] Computed Threshold @ 80% Recall: {threshold_at_95:.4f}")
 
     return {
         "roc_auc": roc_auc,
@@ -67,7 +65,7 @@ def compute_md_metrics(predictions, labels, verbose=True):
         "precision_at_95": precision_at_95,
         "fpr_at_95": fpr_at_95,
         "iou": iou_95,
-        "threshold_at_80": threshold_at_80
+        "threshold_at_95": threshold_at_95
     }
 
 def evaluate_model_md_metrics(model, points, features, labels, mismatch_type, predictions=None, verbose=True):

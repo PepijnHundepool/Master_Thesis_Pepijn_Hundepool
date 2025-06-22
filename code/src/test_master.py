@@ -32,35 +32,21 @@ warnings.filterwarnings("ignore", category=UndefinedMetricWarning)
 warnings.filterwarnings("ignore", category=MatplotlibDeprecationWarning)
 
 MODEL_PATHS = [
-    # r"D:\Graduation Project\Pointclouds\total\datasets\dataset_pillar_added\mismatch_detection_model_per_point_pillar_added_clean_and_occluded_1.pth",
-    r"D:\Graduation Project\Pointclouds\total\datasets\dataset_pillar_added\mismatch_detection_model_per_point_pillar_added_clean_and_occluded_1_no_augmented_no_xyz.pth",
-    # r"D:\Graduation Project\Pointclouds\total\datasets\dataset_pillar_removed\mismatch_detection_model_per_point_pillar_removed_clean_and_occluded_2.pth",
-    # r"D:\Graduation Project\Pointclouds\total\datasets\dataset_pillar_removed\mismatch_detection_model_per_point_pillar_removed_clean_and_occluded_2_no_augmented.pth",
-    r"D:\Graduation Project\Pointclouds\total\datasets\dataset_pillar_removed\mismatch_detection_model_per_point_pillar_removed_clean_and_occluded_3_no_augmented_no_xyz.pth",
-    # r"D:\Graduation Project\Pointclouds\total\datasets\dataset_pillar_moved\mismatch_detection_model_per_point_pillar_moved_clean_and_occluded_1.pth",
-    # r"D:\Graduation Project\Pointclouds\total\datasets\dataset_wall_added\mismatch_detection_model_per_point_wall_added_clean_and_occluded_1.pth",
-    r"D:\Graduation Project\Pointclouds\total\datasets\dataset_wall_added\mismatch_detection_model_per_point_wall_added_clean_and_occluded_1_no_augmented_no_xyz.pth",
-    # r"D:\Graduation Project\Pointclouds\total\datasets\dataset_wall_removed\mismatch_detection_model_per_point_wall_removed_clean_and_occluded_2.pth",
-    # r"D:\Graduation Project\Pointclouds\total\datasets\dataset_wall_removed\mismatch_detection_model_per_point_wall_removed_clean_and_occluded_2_no_augmented.pth",
-    r"D:\Graduation Project\Pointclouds\total\datasets\dataset_wall_removed\mismatch_detection_model_per_point_wall_removed_clean_and_occluded_2_no_augmented_no_xyz.pth",
+    r"D:\GitHub\Master_Thesis_Pepijn_Hundepool\trained_models\pillar_added\mismatch_detection_model_per_point_pillar_added_clean_and_occluded_1_no_augmented_no_xyz.pth",
+    r"D:\GitHub\Master_Thesis_Pepijn_Hundepool\trained_models\pillar_removed\mismatch_detection_model_per_point_pillar_removed_clean_and_occluded_3_no_augmented_no_xyz.pth",
+    r"D:\GitHub\Master_Thesis_Pepijn_Hundepool\trained_models\wall_added\mismatch_detection_model_per_point_wall_added_clean_and_occluded_1_no_augmented_no_xyz.pth",
+    r"D:\GitHub\Master_Thesis_Pepijn_Hundepool\trained_models\wall_removed\mismatch_detection_model_per_point_wall_removed_clean_and_occluded_2_no_augmented_no_xyz.pth",
 ]
 
 TEST_SCAN_PAIRS = [
-    # (r"D:\Graduation Project\Pointclouds\total\datasets\dataset_real_world\wall_removed\occluded\npy_files_filtered_no_augmented\room_test_1_occluded_dt_scan_wall_removed_frames_1_to_1_object_filtered_preprocessed.npy", # change per run
-    #  r"D:\Graduation Project\Pointclouds\total\datasets\dataset_real_world\wall_removed\occluded\npy_files_filtered_no_augmented\room_test_1_occluded_robot_scan_wall_removed_frames_1_to_1_object_filtered_preprocessed.npy") # change per run
-
-    (r"D:\Graduation Project\Pointclouds\total\datasets\dataset_pillar_added\clean_and_occluded\npy_files_no_augmented\room_test_2_occluded_dt_scan_frames_17_to_17_object_filtered_preprocessed.npy", # change per run
-     r"D:\Graduation Project\Pointclouds\total\datasets\dataset_pillar_added\clean_and_occluded\npy_files_no_augmented\room_test_2_occluded_robot_scan_frames_17_to_17_object_filtered_preprocessed.npy") # change per run
-
-    # (r"D:\Graduation Project\Pointclouds\total\datasets\dataset_multiple_mismatches\different_object_type_and_different_mismatch_type\objects_added_and_removed\occluded\npy_files_filtered_no_augmented\room_1_occluded_dt_scan_chaos_frames_17_to_17_object_filtered_preprocessed.npy", # change per run
-    #  r"D:\Graduation Project\Pointclouds\total\datasets\dataset_multiple_mismatches\different_object_type_and_different_mismatch_type\objects_added_and_removed\occluded\npy_files_filtered_no_augmented\room_1_occluded_robot_scan_chaos_frames_17_to_17_object_filtered_preprocessed.npy") # change per run
+    (r"D:\GitHub\Master_Thesis_Pepijn_Hundepool\datasets\dataset_real_world\pillar_added\clean\npy_files_filtered_no_augmented\room_test_1_clean_dt_scan_pillar_added_frames_1_to_1_object_filtered_preprocessed", # change per run
+     r"D:\GitHub\Master_Thesis_Pepijn_Hundepool\datasets\dataset_real_world\pillar_added\clean\npy_files_filtered_no_augmented\room_test_1_clean_robot_scan_pillar_added_frames_1_to_1_object_filtered_preprocessed") # change per run
 ]
 
-THRESHOLD = 0.5 # change if needed
-SCORE_THRESHOLD = 1.1  # change if needed
+THRESHOLD = 0.6 # change if needed
 
 def load_ground_truth_bbox(test_filename, json_folder):
-    base_name = test_filename.replace("_frames_17_to_17_object_filtered_preprocessed.npy", "") # change this per run, "1_to_1" for real-world test cases, "17_to_17" for all other
+    base_name = test_filename.replace("_frames_1_to_1_object_filtered_preprocessed.npy", "") # change this per run, "1_to_1" for real-world test cases, "17_to_17" for all other
     json_path = os.path.join(json_folder, base_name + ".json")
     if not os.path.exists(json_path):
         raise FileNotFoundError(f"[ERROR] Ground truth JSON not found: {json_path}")
@@ -115,7 +101,7 @@ def generate_bounding_box_without_gt(points, predictions, object_type, threshold
     else:
         raise ValueError(f"Unknown object type: {object_type}")
 
-def visualize_outputs(points, predictions, ground_truth, threshold=0.5):
+def visualize_outputs(points, predictions, ground_truth, threshold=0.6):
     if len(points) != len(ground_truth):
         print(f"[WARNING] Mismatched lengths: points={len(points)}, labels={len(ground_truth)} — skipping visualization")
         return
@@ -298,9 +284,7 @@ def test_master():
         for dt_file, robot_file in TEST_SCAN_PAIRS:
             dt_scan = np.load(dt_file)
             robot_scan = np.load(robot_file)
-            # label_dir = r"D:\Graduation Project\Pointclouds\total\datasets\dataset_multiple_mismatches\different_object_type_and_different_mismatch_type\objects_added_and_removed\occluded\labels_npy_filtered_no_augmented" # change this per run
-            # label_dir = r"D:\Graduation Project\Pointclouds\total\datasets\dataset_real_world\wall_removed\occluded\labels_npy_filtered_no_augmented" # change this per run
-            label_dir = r"D:\Graduation Project\Pointclouds\total\datasets\dataset_pillar_added\clean_and_occluded\labels_no_augmented" # change this per run
+            label_dir = r"D:\GitHub\Master_Thesis_Pepijn_Hundepool\datasets\dataset_real_world\pillar_added\clean\labels_npy_filtered_no_augmented" # change this per run
             dt_label_file = os.path.join(label_dir, os.path.basename(dt_file).replace(".npy", "_labels.npy"))
             robot_label_file = os.path.join(label_dir, os.path.basename(robot_file).replace(".npy", "_labels.npy"))
 
@@ -356,7 +340,7 @@ def test_master():
                     mismatch_type=mismatch_type,
                     predictions=preds_robot
                 )
-                threshold_dynamic = metrics.get("threshold_at_80", 0.5)  # fallback if not found
+                threshold_dynamic = metrics.get("threshold_at_95", 0.5)  # fallback if not found
                 print(f"[DEBUG] → Dynamic threshold: {threshold_dynamic:.4f}")
                 print(f"[DEBUG] → Prediction stats: min={preds_robot.min():.4f}, max={preds_robot.max():.4f}, mean={preds_robot.mean():.4f}")
             elif is_dt_trained:
@@ -370,7 +354,7 @@ def test_master():
                     mismatch_type=mismatch_type,
                     predictions=preds_dt
                 )
-                threshold_dynamic = metrics.get("threshold_at_80", 0.5)  # fallback if not found
+                threshold_dynamic = metrics.get("threshold_at_95", 0.5)  # fallback if not found
                 print(f"[DEBUG] → Dynamic threshold: {threshold_dynamic:.4f}")
                 print(f"[DEBUG] → Prediction stats: min={preds_dt.min():.4f}, max={preds_dt.max():.4f}, mean={preds_dt.mean():.4f}")
 
@@ -551,12 +535,10 @@ def test_master():
         print("[INFO] Skipping GT bounding box viewer: no predicted boxes available.")
         return  # prevents undefined scan_preds/scan_points error
 
-    # bounding_box_dir = r"D:\Graduation Project\Pointclouds\total\datasets\dataset_multiple_mismatches\different_object_type_and_different_mismatch_type\objects_added_and_removed\occluded\bounding_boxes" # change per run
-    # bounding_box_dir = r"D:\Graduation Project\Pointclouds\total\datasets\dataset_real_world\wall_removed\occluded\bounding_boxes" # change per run
-    bounding_box_dir = r"D:\Graduation Project\Pointclouds\total\datasets\dataset_pillar_added\clean_and_occluded\bounding_boxes" # change per run
+    bounding_box_dir = r"D:\GitHub\Master_Thesis_Pepijn_Hundepool\datasets\dataset_real_world\pillar_added\clean\bounding_boxes" # change per run
     
-    dt_gt_filename = os.path.basename(TEST_SCAN_PAIRS[0][0]).replace("_frames_17_to_17_object_filtered_preprocessed.npy", "") + ".json"
-    robot_gt_filename = os.path.basename(TEST_SCAN_PAIRS[0][1]).replace("_frames_17_to_17_object_filtered_preprocessed.npy", "") + ".json"
+    dt_gt_filename = os.path.basename(TEST_SCAN_PAIRS[0][0]).replace("_frames_1_to_1_object_filtered_preprocessed.npy", "") + ".json" # change this per run, "1_to_1" for real-world test cases, "17_to_17" for all other
+    robot_gt_filename = os.path.basename(TEST_SCAN_PAIRS[0][1]).replace("_frames_1_to_1_object_filtered_preprocessed.npy", "") + ".json" # change this per run, "1_to_1" for real-world test cases, "17_to_17" for all other
 
     dt_gt_path = os.path.join(bounding_box_dir, dt_gt_filename)
     robot_gt_path = os.path.join(bounding_box_dir, robot_gt_filename)

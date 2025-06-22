@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Set the directory where the .npy files are saved
-log_dir = r"D:\Graduation Project\Pointclouds\total\datasets\dataset_pillar_removed" # change per run
+log_dir = r"D:\GitHub\Master_Thesis_Pepijn_Hundepool\trained_models\pillar_removed" # change per run
 
 # Load the saved arrays
 val_losses = np.load(os.path.join(log_dir, "val_losses_clean_and_occluded_3_no_augmented_no_xyz.npy"))

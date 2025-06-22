@@ -52,20 +52,6 @@ def infer_object_type(cluster):
     print(f"[DEBUG] → Ambiguous: defaulting to rectangular_pillar")
     return "rectangular_pillar"
 
-    # is_square = abs(length - width) < 0.2
-    # is_wall_thickness = shorter < 0.25
-    # is_wall_ratio = ratio > 10.0
-    
-    # if is_wall_thickness and is_wall_ratio and not is_square:
-    #     print(f"[DEBUG] → Inferred object type is wall_object")
-    #     return "wall_object"
-    # elif is_square:
-    #     print(f"[DEBUG] → Inferred object type is cylinder_pillar or rectangular_pillar")
-    #     return "cylinder_pillar" if ratio < 2.0 else "rectangular_pillar"
-    # else:
-    #     print(f"[DEBUG] → Inferred object type is cylinder_pillar or rectangular_pillar")
-    #     return "cylinder_pillar" if ratio < 2.0 else "rectangular_pillar"
-
 def fit_pillar_bounding_box(mismatch_points, points):
     from sklearn.cluster import DBSCAN
     from sklearn.decomposition import PCA

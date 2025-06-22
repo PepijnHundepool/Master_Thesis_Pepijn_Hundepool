@@ -15,20 +15,6 @@ import matplotlib.pyplot as plt
 TRAIN_MODEL = False  # change per run
 threshold = 0.6
 
-import torch.nn.functional as F
-
-class DiceLoss(nn.Module):
-    def __init__(self, smooth=1e-6):
-        super(DiceLoss, self).__init__()
-        self.smooth = smooth
-
-    def forward(self, logits, targets):
-        probs = torch.sigmoid(logits)
-        intersection = (probs * targets).sum()
-        union = probs.sum() + targets.sum()
-        dice = (2. * intersection + self.smooth) / (union + self.smooth)
-        return 1 - dice
-
 class PointCloudDataset(Dataset):
     def __init__(self, npy_folder, labels_folder, exclude_files=None):
         self.npy_folder = npy_folder
@@ -48,14 +34,10 @@ class PointCloudDataset(Dataset):
         dt_scan = np.load(os.path.join(self.npy_folder, dt_scan_file))
         robot_scan = np.load(os.path.join(self.npy_folder, scan_file))
 
-        # kdtree = KDTree(dt_scan[:, :3])
-        # distances, _ = kdtree.query(robot_scan[:, :3], k=1)
-        # features = distances  # Already (N, 1)
-
         nbrs = NearestNeighbors(n_neighbors=1, algorithm='auto').fit(dt_scan)
         distances, _ = nbrs.kneighbors(robot_scan)
-        # features = distances.astype(np.float32) # change to uncommented for only NN-distance as feature
-        features = np.concatenate([robot_scan, distances], axis=1).astype(np.float32)  # Shape: (N, 4) # change to uncommented for XYZ, NN features
+        features = distances.astype(np.float32) # change to uncommented for only NN-distance as feature
+        # features = np.concatenate([robot_scan, distances], axis=1).astype(np.float32)  # Shape: (N, 4) # change to uncommented for XYZ, NN features
 
         label_file = scan_file.replace(".npy", "_labels.npy")
         label_path = os.path.join(self.labels_folder, label_file)
@@ -126,24 +108,6 @@ class MismatchDetectionNet(nn.Module):
         x = self.seg_conv3(x)                               # [B, 1, N]
 
         return x.squeeze(1)  # [B, N]
-
-    # def forward(self, x):
-    #     x = x.transpose(1, 2)
-    #     x = F.relu(self.batchnorm1(self.conv1(x)))
-    #     x = F.relu(self.batchnorm2(self.conv2(x)))
-    #     x = F.relu(self.batchnorm3(self.conv3(x)))
-    #     x = F.relu(self.batchnorm4(self.conv4(x)))
-    #     x = self.dropout(x)
-    #     global_feat = torch.max(x, 2, keepdim=True)[0]
-
-    #     # seg_feat = global_feat.expand(-1, -1, x.shape[2])
-    #     x_concat = torch.cat([x, global_feat.expand(-1, -1, x.shape[2])], dim=1)
-    #     x = F.relu(self.seg_bn1(self.seg_conv1(x_concat)))
-    #     x = self.dropout(x)
-    #     x = F.relu(self.seg_bn2(self.seg_conv2(x)))
-    #     x = self.dropout(x)
-    #     x = self.seg_conv3(x)  # logits (no sigmoid here)
-    #     return x.transpose(1, 2)  # Shape: [B, N, 1]
     
 class FocalLoss(nn.Module):
     def __init__(self, alpha=2.0, gamma=2):
@@ -180,14 +144,6 @@ def custom_collate_fn(batch):
 
     return robot_scans_padded, features_padded, labels_padded, filenames
 
-# def get_colored_pointcloud(points, probabilities):
-#     pcd = o3d.geometry.PointCloud()
-#     pcd.points = o3d.utility.Vector3dVector(points)
-#     # colors = plt.get_cmap("hot")(probabilities)[:, :3]
-#     colors = plt.get_cmap("hot")(probabilities.detach().cpu().numpy())[:, :3]
-#     pcd.colors = o3d.utility.Vector3dVector(colors)
-#     return pcd
-
 def show_colored_pointcloud_with_colorbar(points, probabilities):
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(points)
@@ -222,8 +178,8 @@ def compute_metrics(preds, labels):
 
     return TP, FP, FN, precision, recall, iou
 
-npy_folder = r"D:\Graduation Project\Pointclouds\total\datasets\dataset_pillar_added\clean_and_occluded\npy_files" # change this per run
-labels_folder = r"D:\Graduation Project\Pointclouds\total\datasets\dataset_pillar_added\clean_and_occluded\labels" # change this per run
+npy_folder = r"D:\GitHub\Master_Thesis_Pepijn_Hundepool\datasets\dataset_pillar_removed\clean_and_occluded\npy_files_filtered_no_augmented" # change this per run
+labels_folder = r"D:\GitHub\Master_Thesis_Pepijn_Hundepool\datasets\dataset_pillar_removed\clean_and_occluded\labels_npy_filtered_no_augmented" # change this per run
 
 # Reserve specific files for testing only
 test_files = [f for f in os.listdir(npy_folder) if f.startswith("room_test") and f.endswith(".npy")]
@@ -269,11 +225,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
 model = MismatchDetectionNet().to(device)
 optimizer = optim.Adam(model.parameters(), lr=0.00005, weight_decay=1e-4)
-# loss_function = nn.BCELoss(pos_weight=torch.tensor(10.0).to(device)) # "Mismatch points are 10x more important than normal ones."
-# loss_function = nn.BCEWithLogitsLoss(pos_weight=torch.tensor(10.0).to(device))
 
-loss_function = FocalLoss(alpha=10.0, gamma=2).to(device)
-# loss_function = DiceLoss().to(device)
+loss_function = FocalLoss(alpha=10.0, gamma=2).to(device) # "Mismatch points are 10x more important than normal ones."
 
 if TRAIN_MODEL:
     train_losses = []
@@ -339,12 +292,12 @@ if TRAIN_MODEL:
         
         # Save model every 50 epochs
         if (epoch + 1) % 50 == 0:
-            model_save_path = r"D:\Graduation Project\Pointclouds\total\datasets\dataset_pillar_added\mismatch_detection_model_per_point_pillar_added_clean_and_occluded_1_epoch_{}.pth".format(epoch + 1) # change this per run
+            model_save_path = r"D:\GitHub\Master_Thesis_Pepijn_Hundepool\trained_models\pillar_removed\mismatch_detection_model_per_point_pillar_removed_clean_and_occluded_1_epoch_{}.pth".format(epoch + 1) # change this per run
             torch.save(model.state_dict(), model_save_path)
             print(f"[CHECKPOINT] Saved model to {model_save_path}")
 
             # Save logs up to current epoch
-            log_dir = r"D:\Graduation Project\Pointclouds\total\datasets\dataset_wall_removed"
+            log_dir = r"D:\GitHub\Master_Thesis_Pepijn_Hundepool\trained_models\pillar_removed"
             np.save(os.path.join(log_dir, "train_losses_epoch_{}.npy".format(epoch + 1)), np.array(train_losses))
             np.save(os.path.join(log_dir, "val_losses_epoch_{}.npy".format(epoch + 1)), np.array(val_losses))
             np.save(os.path.join(log_dir, "val_precisions_epoch_{}.npy".format(epoch + 1)), np.array(val_precisions))
@@ -376,88 +329,9 @@ if TRAIN_MODEL:
     plt.tight_layout()
     plt.show()
 
-    torch.save(model.state_dict(), r"D:\Graduation Project\Pointclouds\total\datasets\dataset_pillar_added\mismatch_detection_model_per_point_pillar_added_clean_and_occluded_1.pth") # change this per run
-    np.save(r"D:\Graduation Project\Pointclouds\total\datasets\dataset_pillar_added\train_losses_clean_and_occluded_1.npy", np.array(train_losses)) # change this per run
-    np.save(r"D:\Graduation Project\Pointclouds\total\datasets\dataset_pillar_added\val_losses_clean_and_occluded_1.npy", np.array(val_losses)) # change this per run
-    np.save(r"D:\Graduation Project\Pointclouds\total\datasets\dataset_pillar_added\val_precisions_clean_and_occluded_1.npy", np.array(val_precisions)) # change this per run
-    np.save(r"D:\Graduation Project\Pointclouds\total\datasets\dataset_pillar_added\val_recalls_clean_and_occluded_1.npy", np.array(val_recalls)) # change this per run
+    torch.save(model.state_dict(), r"D:\GitHub\Master_Thesis_Pepijn_Hundepool\trained_models\pillar_removed\mismatch_detection_model_per_point_pillar_removed_clean_and_occluded_1.pth") # change this per run
+    np.save(r"D:\GitHub\Master_Thesis_Pepijn_Hundepool\trained_models\pillar_removed\train_losses_clean_and_occluded_1.npy", np.array(train_losses)) # change this per run
+    np.save(r"D:\GitHub\Master_Thesis_Pepijn_Hundepool\trained_models\pillar_removed\val_losses_clean_and_occluded_1.npy", np.array(val_losses)) # change this per run
+    np.save(r"D:\GitHub\Master_Thesis_Pepijn_Hundepool\trained_models\pillar_removed\val_precisions_clean_and_occluded_1.npy", np.array(val_precisions)) # change this per run
+    np.save(r"D:\GitHub\Master_Thesis_Pepijn_Hundepool\trained_models\pillar_removed\val_recalls_clean_and_occluded_1.npy", np.array(val_recalls)) # change this per run
 
-# else:
-#     model.load_state_dict(torch.load("mismatch_detection_model_per_point_pillar_added_1.pth"))
-#     model.eval()
-
-# # Testing and bounding box generation
-# model.eval()
-# test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
-
-# if __name__ == "__main__":
-#     for robot_scan, features, labels, filenames in test_loader:
-#         labels = labels.to(device)
-#         # inputs = torch.cat((robot_scan, features), dim=2) # We do not need XYZ
-#         inputs = features
-#         with torch.no_grad():
-#             # outputs = model(inputs).squeeze()
-#             outputs = model(inputs.to(device)).squeeze()
-#             print("Logits shape:", outputs.shape)
-#             # Inspect logits before sigmoid
-#             plt.hist(outputs.cpu().numpy(), bins=50, color='skyblue')
-#             plt.title("Logits Before Sigmoid")
-#             plt.xlabel("Logit Value")
-#             plt.ylabel("Frequency")
-#             plt.show()
-#             outputs = torch.sigmoid(outputs)
-#             print("Labels==1 probs:", outputs[labels.squeeze() == 1].cpu().numpy())
-
-#             predicted_labels = (outputs > threshold).cpu().numpy().astype(np.uint8).squeeze()
-
-#             # Extract filename and save predicted .npy
-#             filename = filenames[0].replace(".npy", "_pred.npy")
-#             save_path = os.path.join(r"D:\Graduation Project\Pointclouds\total\datasets\dataset_pillar_added\occluded\predicted_labels", filename)
-#             np.save(save_path, predicted_labels)
-
-#             print(f"[INFO] Saved predicted labels to {save_path}")
-
-#         robot_points = robot_scan.squeeze().cpu().numpy()
-#         mismatch_mask = (outputs > threshold)
-#         TP, FP, FN, precision, recall, iou = compute_metrics(mismatch_mask, labels.squeeze())
-
-#         print(f"Evaluation Metrics:")
-#         print(f"TP: {TP}, FP: {FP}, FN: {FN}")
-#         print(f"Precision: {precision:.4f}, Recall: {recall:.4f}, IoU: {iou:.4f}")
-
-#         predictions = mismatch_mask.cpu().numpy().astype(bool)
-#         mismatch_points = robot_points[mismatch_mask.cpu().numpy()]
-
-#         print(f"{filenames[0]} → {predictions.sum()} predicted mismatch points above threshold.")
-#         print(f"Min prob: {outputs.min():.4f}, Max prob: {outputs.max():.4f}, Mean prob: {outputs.mean():.4f}")
-
-#         plt.hist(outputs.cpu().numpy(), bins=50, color='purple')
-#         plt.title("Histogram of Predicted Probabilities")
-#         plt.xlabel("Probability")
-#         plt.ylabel("Frequency")
-#         plt.show()
-
-#         colored_pcd = show_colored_pointcloud_with_colorbar(robot_points, outputs)
-#         vis_objects = [colored_pcd]
-
-#         if len(mismatch_points) > 0:
-#             clustering = DBSCAN(eps=0.3, min_samples=5).fit(mismatch_points)
-#             cluster_labels = clustering.labels_
-#             unique_labels = set(cluster_labels)
-
-#             for label in unique_labels:
-#                 if label == -1:
-#                     continue
-#                 cluster = mismatch_points[cluster_labels == label]
-#                 pcd = o3d.geometry.PointCloud()
-#                 pcd.points = o3d.utility.Vector3dVector(cluster)
-#                 bbox = pcd.get_axis_aligned_bounding_box()
-#                 bbox.color = (0, 1, 0)
-#                 vis_objects.append(bbox)
-
-#             num_clusters = len(unique_labels) - (1 if -1 in unique_labels else 0)
-#             print(f"{filenames[0]}: {num_clusters} clusters detected.")
-#         else:
-#             print(f"{filenames[0]}: No mismatch predicted, showing heatmap only.")
-
-#         o3d.visualization.draw_geometries(vis_objects)

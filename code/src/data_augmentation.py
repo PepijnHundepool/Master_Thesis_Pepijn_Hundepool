@@ -79,33 +79,6 @@ def augment_pair(clean_path, added_path, output_folder):
     save_augmented_pointcloud(clean_rt, os.path.join(output_folder, f"{base_clean}_rotated_and_translated"))
     save_augmented_pointcloud(added_rt, os.path.join(output_folder, f"{base_added}_rotated_and_translated"))
 
-# def extract_clean_filename(mismatched_filename):
-#     # Remove "_<type>_<action>" from the filename, e.g. "_pillar_added" or "_wall_removed"
-#     return re.sub(r'_([a-z]+)_(added|removed|moved)', '', mismatched_filename)
-
-# def process_folder(folder):
-#     # Only select original files (skip already augmented ones)
-#     all_files = sorted([
-#         f for f in os.listdir(folder)
-#         if f.endswith(".csv")
-#         # and "pillar_added" in f
-#         and not any(suffix in f for suffix in ["_rotated", "_translated", "_rotated_and_translated"])
-#         # and re.search(r'_([a-z]+)_(added|removed|moved)', f)  # Match all mismatch types
-#     ])
-
-#     for f in all_files:
-#         if f.startswith("room_test"):  # Skip test files
-#             continue
-
-#         clean_file = extract_clean_filename(f)
-#         clean_path = os.path.join(folder, clean_file)
-#         mismatched_path = os.path.join(folder, f)
-
-#         if os.path.exists(clean_path):
-#             augment_pair(clean_path, mismatched_path, folder)
-#         else:
-#             print(f"Warning: Clean file {clean_file} not found for {f}")
-
 def process_folder(folder):
     all_files = sorted([f for f in os.listdir(folder) if f.endswith(".csv")])
 
@@ -136,6 +109,5 @@ def process_folder(folder):
         augment_pair(dt_path, robot_path, folder)
 
 if __name__ == "__main__":
-    # folder_path = r"D:\Graduation Project\Pointclouds\total\datasets\dataset_pillar_removed\occluded\labels_csv_filtered_improved" # change this per run
-    folder_path = r"D:\Graduation Project\Pointclouds\total\datasets\dataset_real_world\pillar_added\clean\labels_csv_filtered" # change this per run
+    folder_path = r"D:\GitHub\Master_Thesis_Pepijn_Hundepool\datasets\dataset_pillar_removed\clean\labels_csv_filtered" # change to desired folder
     process_folder(folder_path)

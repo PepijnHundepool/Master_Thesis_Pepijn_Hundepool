@@ -34,11 +34,6 @@ def filter_by_category_zspan(df, z_threshold=1.5, floor_z=-1.5, ceiling_z=1.5, t
             keep_indices.extend(object_points.index.tolist())
             continue
 
-        # Normal height-based filter
-        # z_span = z_values.max() - z_values.min()
-        # if z_span >= z_threshold:
-        #     keep_indices.extend(object_points.index.tolist())
-
         # Filter based on max Z relative to floor
         z_top = z_values.max()
         if z_top - floor_z >= z_threshold:
@@ -49,21 +44,13 @@ def filter_by_category_zspan(df, z_threshold=1.5, floor_z=-1.5, ceiling_z=1.5, t
 def filter_csv_pointcloud(file_path, output_path, z_threshold=1.5):
     df = pd.read_csv(file_path, sep=';')
     filtered_df = filter_by_category_zspan(df, z_threshold)
-    # filtered_df.to_csv(output_path, sep=';', index=False)
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     filtered_df.to_csv(output_path, sep=';', index=False)
     print(f"Filtered point cloud saved to: {output_path}")
     return filtered_df
 
-# Example usage (replace paths with real ones when calling this from your pipeline)
 if __name__ == "__main__":
-    # input_csv = r"D:\Graduation Project\Pointclouds\total\datasets\dataset_pillar_moved\occluded\csv_files\room_test_3_occluded_robot_scan_frames_17_to_17.csv" # change this per run
-    # output_csv = r"D:\Graduation Project\Pointclouds\total\datasets\dataset_pillar_moved\occluded\object_filtered_csv_files\room_test_3_occluded_robot_scan_frames_17_to_17_object_filtered.csv" # change this per run
-
-    # input_csv = r"D:\Graduation Project\Pointclouds\total\datasets\dataset_real_world\wall_removed\occluded\csv_files\room_test_1_occluded_robot_scan_wall_removed_frames_1_to_1.csv" # change this per run
-    # output_csv = r"D:\Graduation Project\Pointclouds\total\datasets\dataset_real_world\wall_removed\occluded\object_filtered_csv_files\room_test_1_occluded_robot_scan_wall_removed_frames_1_to_1_object_filtered.csv" # change this per run
-
-    input_csv = r"D:\Graduation Project\Pointclouds\total\datasets\dataset_multiple_mismatches\different_object_type_and_different_mismatch_type\objects_added_and_removed\occluded\csv_files\room_1_occluded_dt_scan_chaos_frames_17_to_17.csv"
-    output_csv = r"D:\Graduation Project\Pointclouds\total\datasets\dataset_multiple_mismatches\different_object_type_and_different_mismatch_type\objects_added_and_removed\occluded\object_filtered_csv_files\room_1_occluded_dt_scan_chaos_frames_17_to_17_object_filtered.csv"
+    input_csv = r"D:\GitHub\Master_Thesis_Pepijn_Hundepool\datasets\dataset_pillar_removed\clean\csv_files\room_1_clean_robot_scan_frames_17_to_17.csv" # change to desired file
+    output_csv = r"D:\GitHub\Master_Thesis_Pepijn_Hundepool\datasets\dataset_pillar_removed\clean\object_filtered_csv_files\room_1_clean_robot_scan_frames_17_to_17_object_filtered.csv" # change to desired file
     filter_csv_pointcloud(input_csv, output_csv, z_threshold=2.4)
 

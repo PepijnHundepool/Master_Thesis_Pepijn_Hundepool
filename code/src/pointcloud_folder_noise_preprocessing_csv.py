@@ -6,11 +6,9 @@ import open3d as o3d
 def load_csv_pointcloud(file_path):
     """Loads a point cloud from a CSV file and keeps only X, Y, Z."""
     df = pd.read_csv(file_path, delimiter=";")
-    # print(df.columns)
     required_cols = ["X", "Y", "Z", "categoryID"]
     if not all(col in df.columns for col in required_cols):
         raise ValueError(f"CSV file must contain at least {required_cols}")
-    # return df[required_cols]
     if "categoryID" in df.columns:
         return df[["X", "Y", "Z", "categoryID"]]
     else:
@@ -21,7 +19,6 @@ def voxel_downsample(df, voxel_size=0.1):
     cloud = o3d.geometry.PointCloud()
     cloud.points = o3d.utility.Vector3dVector(df[["X", "Y", "Z"]].values)
     downsampled_cloud = cloud.voxel_down_sample(voxel_size=voxel_size)
-    # return pd.DataFrame(np.asarray(downsampled_cloud.points), columns=["X", "Y", "Z"])
 
     # Below code is for retaining categoryID
     downsampled_points = np.asarray(downsampled_cloud.points)
@@ -86,14 +83,8 @@ def preprocess_pointcloud_folder(input_folder, output_folder, voxel_size=0.1, re
             print(f"Saved processed file to {output_path}")
 
 def main():
-    input_folder = r"D:\Graduation Project\Pointclouds\total\datasets\dataset_wall_added\clean\object_filtered_csv_files"
-    output_folder = r"D:\Graduation Project\Pointclouds\total\datasets\dataset_wall_added\clean\preprocessed_csv_files"
-
-    # input_folder = r"D:\Graduation Project\Pointclouds\total\datasets\dataset_real_world\wall_removed\occluded\object_filtered_csv_files" # change this per run
-    # output_folder = r"D:\Graduation Project\Pointclouds\total\datasets\dataset_real_world\wall_removed\occluded\preprocessed_csv_files" # change this per run
-
-    # input_folder = r"D:\Graduation Project\Pointclouds\total\datasets\dataset_multiple_mismatches\different_object_type_and_different_mismatch_type\objects_added_and_removed\occluded\object_filtered_csv_files"
-    # output_folder = r"D:\Graduation Project\Pointclouds\total\datasets\dataset_multiple_mismatches\different_object_type_and_different_mismatch_type\objects_added_and_removed\occluded\preprocessed_csv_files"
+    input_folder = r"D:\GitHub\Master_Thesis_Pepijn_Hundepool\datasets\dataset_pillar_removed\clean\object_filtered_csv_files" # change to desired file
+    output_folder = r"D:\GitHub\Master_Thesis_Pepijn_Hundepool\datasets\dataset_pillar_removed\clean\preprocessed_csv_files" # change to desired file
     preprocess_pointcloud_folder(input_folder, output_folder, voxel_size=0.1, remove_outliers_flag=False)
 
 if __name__ == "__main__":
