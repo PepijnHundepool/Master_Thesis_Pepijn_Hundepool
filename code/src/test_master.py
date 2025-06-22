@@ -24,6 +24,7 @@ from matplotlib import MatplotlibDeprecationWarning
 import json
 import time
 from MD_performance_helpers import evaluate_model_md_metrics
+from config import *
 
 # Suppress specific categories of warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -42,8 +43,6 @@ TEST_SCAN_PAIRS = [
     (r"D:\GitHub\Master_Thesis_Pepijn_Hundepool\datasets\dataset_real_world\pillar_added\clean\npy_files_filtered_no_augmented\room_test_1_clean_dt_scan_pillar_added_frames_1_to_1_object_filtered_preprocessed", # change per run
      r"D:\GitHub\Master_Thesis_Pepijn_Hundepool\datasets\dataset_real_world\pillar_added\clean\npy_files_filtered_no_augmented\room_test_1_clean_robot_scan_pillar_added_frames_1_to_1_object_filtered_preprocessed") # change per run
 ]
-
-THRESHOLD = 0.6 # change if needed
 
 def load_ground_truth_bbox(test_filename, json_folder):
     base_name = test_filename.replace("_frames_1_to_1_object_filtered_preprocessed.npy", "") # change this per run, "1_to_1" for real-world test cases, "17_to_17" for all other
@@ -73,31 +72,38 @@ def compute_f1(predictions, ground_truth):
 
 def generate_bounding_box_without_gt(points, predictions, object_type, threshold=0.5):
     # Apply global Z-trimming before clustering. This is a configurable setting. 
-    z_vals = points[:, 2]
-    z_min = np.percentile(z_vals, 1)
-    z_max = np.percentile(z_vals, 99)
-    z_trim = 0.02  # Configurable floor/ceiling exclusion
-    z_mask = (points[:, 2] > z_min + z_trim) & (points[:, 2] < z_max - z_trim)
+    if ENABLE_Z_TRIMMING:
+        z_vals = points[:, 2]
+        z_min = np.percentile(z_vals, 1)
+        z_max = np.percentile(z_vals, 99)
+        z_trim = Z_TRIM_MARGIN  # Configurable floor/ceiling exclusion
+        z_mask = (points[:, 2] > z_min + z_trim) & (points[:, 2] < z_max - z_trim)
 
-    # Apply this mask to both points and predictions
-    points_trimmed = points[z_mask]
-    predictions_trimmed = predictions[z_mask]
+        # Apply this mask to both points and predictions
+        points_trimmed = points[z_mask]
+        predictions_trimmed = predictions[z_mask]
+    else:
+        points_trimmed = points
+        predictions_trimmed = predictions
+        print("[DEBUG] Z-trimming disabled")
 
     mismatch_points = points_trimmed[predictions_trimmed > threshold]
     if len(mismatch_points) == 0:
         print("[INFO] No mismatch points above threshold after Z-trimming.")
         return []
-    
-    # mismatch_points = points[predictions > threshold] # comment out these four lines and uncomment part above to trim points BEFORE clustering.
-    # if len(mismatch_points) == 0:
-    #     print("[INFO] No mismatch points above threshold.")
-    #     return []
 
     if object_type == "pillar":
         return fit_pillar_bounding_box(mismatch_points, points)
     elif object_type == "wall":
-        return fit_wall_bounding_box(mismatch_points, points)
-        # return fit_wall_bounding_box_pca_split(mismatch_points, points) # Configurable setting: Uncomment this line and comment the one above for enabling pca splitting
+        if USE_WALL_PCA_SPLIT: # Configurable setting
+            return fit_wall_bounding_box_pca_split(
+                mismatch_points,
+                points,
+                split_eccentricity_threshold=WALL_SPLIT_ECC_THRESHOLD,
+                min_cluster_size=MIN_CLUSTER_SIZE
+            )
+        else:
+            return fit_wall_bounding_box(mismatch_points, points)
     else:
         raise ValueError(f"Unknown object type: {object_type}")
 
@@ -387,7 +393,8 @@ def test_master():
                     valid_bboxes = [box for box in predicted_bboxes if is_valid_pillar_bbox(box)]
                 elif object_type == "wall":
                     valid_bboxes = [box for box in predicted_bboxes if is_valid_wall_bbox(box)]
-                    valid_bboxes = merge_wall_boxes(valid_bboxes) # Configurable setting: Comment line for disabling merging of bounding boxes.
+                    if MERGE_WALL_BOXES:
+                        valid_bboxes = merge_wall_boxes(valid_bboxes) # Configurable setting
                 else:
                     print(f"[DEBUG] → Skipped: failed bbox validation.")
                     valid_bboxes = []
@@ -406,7 +413,8 @@ def test_master():
                     valid_bboxes = [box for box in predicted_bboxes if is_valid_pillar_bbox(box)]
                 elif object_type == "wall":
                     valid_bboxes = [box for box in predicted_bboxes if is_valid_wall_bbox(box)]
-                    valid_bboxes = merge_wall_boxes(valid_bboxes) # Configurable setting: Comment line for disabling merging of bounding boxes
+                    if MERGE_WALL_BOXES:
+                        valid_bboxes = merge_wall_boxes(valid_bboxes) # Configurable setting
                 else:
                     print(f"[DEBUG] → Skipped: failed bbox validation.")
                     valid_bboxes = []
@@ -442,10 +450,12 @@ def test_master():
                 continue
             center = np.array(bbox["center"])
             # final_boxes.append((model_name, bbox)) # change this line to commented and uncomment portion below to enable duplicate object checking
-            is_duplicate = any(np.linalg.norm(center - c) < 0.5 for c in added_centers)
+            is_duplicate = any(np.linalg.norm(center - c) < DUPLICATE_CENTER_DISTANCE_THRESHOLD for c in added_centers)
             if not is_duplicate:
                 final_boxes.append((model_name, bbox))
                 added_centers.append(center)
+            else:
+                print(f"[DEBUG] Skipping duplicate bbox at {np.round(center, 2)}")
 
     print(f"\n[SUMMARY] Models selected: {len(selected_results)}")
     print(f"[SUMMARY] Bounding boxes visualized: {len(final_boxes)}")

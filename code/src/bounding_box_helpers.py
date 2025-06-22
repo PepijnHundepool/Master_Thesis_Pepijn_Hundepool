@@ -4,6 +4,22 @@ from pyransac3d import Cylinder, Plane
 from sklearn.decomposition import PCA
 from shapely.geometry import box
 from scipy.spatial import ConvexHull
+from config import (
+    FILTER_OUTLIERS_BY_Z_RATIO,
+    MAX_Z_OUTLIER_RATIO_PILLAR,
+    MAX_Z_OUTLIER_RATIO_WALL,
+    STRETCH_VERTICALLY,
+    FIXED_WALL_THICKNESS,
+    MIN_WALL_LENGTH_FOR_BBOX,
+    MIN_VERTICAL_EXTENT_PILLAR,
+    MIN_VERTICAL_EXTENT_WALL,
+    VALID_PILLAR_DX_MIN, VALID_PILLAR_DX_MAX,
+    VALID_PILLAR_DY_MIN, VALID_PILLAR_DY_MAX,
+    VALID_PILLAR_DZ_MIN, VALID_PILLAR_DZ_MAX,
+    VALID_WALL_THICKNESS_MIN, VALID_WALL_THICKNESS_MAX,
+    VALID_WALL_LENGTH_MIN, VALID_WALL_LENGTH_MAX,
+    VALID_WALL_HEIGHT_MIN, VALID_WALL_HEIGHT_MAX
+)
 
 def infer_object_type(cluster):
     cluster_xy = cluster[:, :2] - np.mean(cluster[:, :2], axis=0)
@@ -82,7 +98,7 @@ def fit_pillar_bounding_box(mismatch_points, points):
             outlier_ratio = np.mean(z_outliers)
         else:
             outlier_ratio = 0
-        if outlier_ratio > 0.01:  # more than 5% of points are floor/ceiling artifacts
+        if FILTER_OUTLIERS_BY_Z_RATIO and outlier_ratio > MAX_Z_OUTLIER_RATIO_PILLAR:
             print(f"[DEBUG] → Skipping cluster {label}: {outlier_ratio:.1%} points on floor/ceiling")
             continue
 
@@ -107,12 +123,17 @@ def fit_pillar_bounding_box(mismatch_points, points):
         # Build point cloud and AABB
         pcd = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(cluster))
         aabb = pcd.get_axis_aligned_bounding_box()
+        z_extent = aabb.get_max_bound()[2] - aabb.get_min_bound()[2]
+        if z_extent < MIN_VERTICAL_EXTENT_PILLAR:
+            print(f"[DEBUG] Skipping pillar cluster — height {z_extent:.2f} < {MIN_VERTICAL_EXTENT_PILLAR}")
+            continue  # skip this cluster
+
         min_bound = list(aabb.get_min_bound())
         max_bound = list(aabb.get_max_bound())
 
-        # Force full Z span
-        min_bound[2] = floor_z
-        max_bound[2] = ceil_z
+        if STRETCH_VERTICALLY:
+            min_bound[2] = floor_z
+            max_bound[2] = ceil_z
 
         # Force square footprint
         center_x = (min_bound[0] + max_bound[0]) / 2
@@ -126,8 +147,12 @@ def fit_pillar_bounding_box(mismatch_points, points):
 
         half_size = size / 2
 
-        min_bound = [center_x - half_size, center_y - half_size, floor_z]
-        max_bound = [center_x + half_size, center_y + half_size, ceil_z]
+        if STRETCH_VERTICALLY:
+            min_bound = [center_x - half_size, center_y - half_size, floor_z]
+            max_bound = [center_x + half_size, center_y + half_size, ceil_z]
+        else:
+            min_bound = [center_x - half_size, center_y - half_size, min_bound[2]]
+            max_bound = [center_x + half_size, center_y + half_size, max_bound[2]]
 
         aabb_final = o3d.geometry.AxisAlignedBoundingBox(min_bound, max_bound)
         aabb_final.color = (0, 1, 0)
@@ -155,10 +180,16 @@ def fit_pillar_bounding_box(mismatch_points, points):
         bbox = {
             "type": "pillar",
             "shape": shape,
-            "center": [float(np.mean(xy[:, 0])), float(np.mean(xy[:, 1])), float((floor_z + ceil_z) / 2)],
-            # "center": [float(center_x), float(center_y), float(center_z)],
-            "dimensions": [size, size, ceil_z - floor_z],
-            # "dimensions": [size, size, max_bound[2] - min_bound[2]], # uncomment this line for unstretched vertical dimension
+            "center": [
+                float(np.mean(xy[:, 0])),
+                float(np.mean(xy[:, 1])),
+                float((floor_z + ceil_z) / 2) if STRETCH_VERTICALLY else float((min_bound[2] + max_bound[2]) / 2)
+            ],
+            "dimensions": [
+                size,
+                size,
+                ceil_z - floor_z if STRETCH_VERTICALLY else max_bound[2] - min_bound[2]
+            ],
             "rotation": float(rotation_angle),
             "bbox": aabb_final  # optional for Open3D vis
         }
@@ -208,10 +239,9 @@ def split_cluster_along_pca(cluster, n_components=2, axis=0, eps=0.2, min_sample
 def is_valid_pillar_bbox(box):
     dx, dy, dz = box["dimensions"]
     return (
-        # These are configurable settings.
-        0.1 < dx < 3.0 and
-        0.1 < dy < 3.0 and
-        2.0 < dz < 10.0
+        VALID_PILLAR_DX_MIN < dx < VALID_PILLAR_DX_MAX and
+        VALID_PILLAR_DY_MIN < dy < VALID_PILLAR_DY_MAX and
+        VALID_PILLAR_DZ_MIN < dz < VALID_PILLAR_DZ_MAX
     )
 
 def fit_wall_bounding_box(mismatch_points, points):
@@ -242,7 +272,7 @@ def fit_wall_bounding_box(mismatch_points, points):
             outlier_ratio = np.mean(z_outliers)
         else:
             outlier_ratio = 0
-        if outlier_ratio > 0.05:  # more than 5% of points are floor/ceiling artifacts
+        if FILTER_OUTLIERS_BY_Z_RATIO and outlier_ratio > MAX_Z_OUTLIER_RATIO_WALL:
             print(f"[DEBUG] → Skipping cluster {label}: {outlier_ratio:.1%} points on floor/ceiling")
             continue
 
@@ -262,13 +292,24 @@ def fit_wall_bounding_box(mismatch_points, points):
         # aabb = obb.get_axis_aligned_bounding_box()
         aabb = pcd.get_axis_aligned_bounding_box()
 
+        z_extent = aabb.get_max_bound()[2] - aabb.get_min_bound()[2]
+        if z_extent < MIN_VERTICAL_EXTENT_WALL:
+            print(f"[DEBUG] Skipping wall cluster — height {z_extent:.2f} < {MIN_VERTICAL_EXTENT_WALL}")
+            continue  # skip this cluster
+
+        extent = aabb.get_extent()
+        length_xy = sorted(extent[:2], reverse=True)  # longest dimension first
+        if length_xy[0] < MIN_WALL_LENGTH_FOR_BBOX:
+            print(f"[DEBUG] Skipping wall cluster — dominant XY length {length_xy[0]:.2f} < {MIN_WALL_LENGTH_FOR_BBOX}")
+            continue
+
         dims = np.array(aabb.get_extent())
         thickness_dim = np.argmin(dims)
         mid = (aabb.get_min_bound()[thickness_dim] + aabb.get_max_bound()[thickness_dim]) / 2
         min_bound = list(aabb.get_min_bound())
         max_bound = list(aabb.get_max_bound())
-        min_bound[thickness_dim] = mid - 0.075
-        max_bound[thickness_dim] = mid + 0.075
+        min_bound[thickness_dim] = mid - FIXED_WALL_THICKNESS / 2
+        max_bound[thickness_dim] = mid + FIXED_WALL_THICKNESS / 2
 
         # rotation_angle = np.degrees(np.arctan2(obb.R[1, 0], obb.R[0, 0]))  # Z-axis rotation
         rotation_angle = 0.0
@@ -281,9 +322,9 @@ def fit_wall_bounding_box(mismatch_points, points):
 
         shape = "rectangular"  # wall shape always rectangular
 
-        # Force full room height. This is a configurable setting. 
-        min_bound[2] = floor_z
-        max_bound[2] = ceil_z
+        if STRETCH_VERTICALLY:
+            min_bound[2] = floor_z
+            max_bound[2] = ceil_z
 
         final_box = o3d.geometry.AxisAlignedBoundingBox(min_bound, max_bound)
 
@@ -309,10 +350,9 @@ def is_valid_wall_bbox(box):
     thin_dim = min(dx, dy)
     long_dim = max(dx, dy)
     return (
-        # These are configurable settings.
-        0.05 < thin_dim < 0.25 and  # wall thickness
-        0.5 < long_dim < 50.0 and   # wall length
-        2.0 < dz < 10.0              # height
+        VALID_WALL_THICKNESS_MIN < thin_dim < VALID_WALL_THICKNESS_MAX and
+        VALID_WALL_LENGTH_MIN < long_dim < VALID_WALL_LENGTH_MAX and
+        VALID_WALL_HEIGHT_MIN < dz < VALID_WALL_HEIGHT_MAX
     )
 
 def merge_wall_boxes(wall_boxes, angle_tolerance=5.0, gap_tolerance=0.15):
@@ -419,7 +459,7 @@ def fit_wall_bounding_box_pca_split(mismatch_points, points, split_eccentricity_
         z_cluster = cluster[:, 2]
         z_outliers = np.logical_or(z_cluster <= floor_z, z_cluster >= ceil_z)
         outlier_ratio = np.mean(z_outliers) if len(z_outliers) != 0 else 0
-        if outlier_ratio > 0.05:
+        if FILTER_OUTLIERS_BY_Z_RATIO and outlier_ratio > MAX_Z_OUTLIER_RATIO_WALL:
             print(f"[DEBUG] → Skipping cluster {label}: {outlier_ratio:.1%} floor/ceiling points")
             continue
 
@@ -460,16 +500,29 @@ def fit_wall_bounding_box_pca_split(mismatch_points, points, split_eccentricity_
             pcd = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(subcluster))
             aabb = pcd.get_axis_aligned_bounding_box()
 
+            z_extent = aabb.get_max_bound()[2] - aabb.get_min_bound()[2]
+            if z_extent < MIN_VERTICAL_EXTENT_WALL:
+                print(f"[DEBUG] Skipping wall cluster — height {z_extent:.2f} < {MIN_VERTICAL_EXTENT_WALL}")
+                continue  # skip this cluster
+
+            extent = aabb.get_extent()
+            length_xy = sorted(extent[:2], reverse=True)  # longest dimension first
+            if length_xy[0] < MIN_WALL_LENGTH_FOR_BBOX:
+                print(f"[DEBUG] Skipping wall cluster — dominant XY length {length_xy[0]:.2f} < {MIN_WALL_LENGTH_FOR_BBOX}")
+                continue
+
             dims = np.array(aabb.get_extent())
             thickness_dim = np.argmin(dims)
             mid = (aabb.get_min_bound()[thickness_dim] + aabb.get_max_bound()[thickness_dim]) / 2
             min_bound = list(aabb.get_min_bound())
             max_bound = list(aabb.get_max_bound())
-            min_bound[thickness_dim] = mid - 0.075
-            max_bound[thickness_dim] = mid + 0.075
+            min_bound[thickness_dim] = mid - FIXED_WALL_THICKNESS / 2
+            max_bound[thickness_dim] = mid + FIXED_WALL_THICKNESS / 2
 
-            min_bound[2] = floor_z
-            max_bound[2] = ceil_z
+            if STRETCH_VERTICALLY:
+                min_bound[2] = floor_z
+                max_bound[2] = ceil_z
+
             final_box = o3d.geometry.AxisAlignedBoundingBox(min_bound, max_bound)
 
             print(f"[WALL_DEBUG] → Subcluster {sub_id} box center: {final_box.get_center()}, dims: {final_box.get_extent()}")
